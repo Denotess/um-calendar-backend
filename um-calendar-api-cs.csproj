@@ -15,4 +15,11 @@
     <PackageReference Include="NSwag.AspNetCore" Version="14.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="calendars\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
