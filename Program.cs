@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.Win32;
+using System.Security.Authentication.ExtendedProtection;
 
 DotNetEnv.Env.Load();
 
@@ -42,12 +43,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddCors(FileOptions =>
+{
+    FileOptions.AddDefaultPolicy(policy =>
+    {
+        policy
+        .AllowAnyOrigin()
+        .AllowAnyMethod()
+        .AllowAnyHeader();
+    });
+});
 
 var app = builder.Build();
 app.UseOpenApi();
 app.UseSwaggerUi();
 
 app.UseAuthentication();
+app.UseCors();
 app.UseAuthorization();
 
 app.Use(async (context, next) =>
