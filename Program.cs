@@ -95,7 +95,6 @@ app.MapGet("/names", () =>
 })
 .WithTags("Calendars")
 .RequireAuthorization();
-
 app.MapGet("/cal/{name}", (string name) =>
 {
     var filePath = Path.Combine(calendarPath, name + ".ics");
@@ -109,20 +108,12 @@ app.MapGet("/cal/{name}", (string name) =>
 .WithTags("Calendars")
 .RequireAuthorization();
 
-app.MapGet("/generate-token/", (HttpContext context) => 
+app.MapGet("/generate-token/", () => 
 {
-    if (!context.Request.Headers.TryGetValue("X-API-Key", out var recievedKey))
-    {
-        return Results.Unauthorized();
-    }
-    if (recievedKey != apiKey) {
-        return Results.Unauthorized();
-    }
-
     var claims = new[]
     {
-        new Claim(ClaimTypes.Name, "admin"),
-        new Claim(ClaimTypes.Role, "owner")
+        new Claim(ClaimTypes.Name, "public"),
+        new Claim(ClaimTypes.Role, "viewer")
     };
     
     var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
@@ -132,7 +123,7 @@ app.MapGet("/generate-token/", (HttpContext context) =>
         issuer: jwtIssuer,
         audience: jwtAudience,
         claims: claims,
-        expires: DateTime.Now.AddYears(1),
+        expires: DateTime.Now.AddHours(24),
         signingCredentials: credentials
     );
     
