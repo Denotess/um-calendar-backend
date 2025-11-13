@@ -1,0 +1,51 @@
+# Calendar API + Scraper - Combined Deployment
+
+# ===================
+# .NET / C# API
+# ===================
+# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# IDE settings
+.vs/
+.vscode/
+.idea/
+
+# .NET build files
+*.log
+
+# ===================
+# Python Scraper
+# ===================
+# Virtual environments
+scraper/.venv/
+scraper/venv/
+scraper/__pycache__/
+*.py[cod]
+
+# Scraper metadata (local only)
+scraper/calendarsMeta.json
+scraper/calendars/
+
+# ===================
+# Shared
+# ===================
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables (NEVER commit!)
+.env
+.env.local
+.env.*
+!.env.example
+
+# ===================
+# Important: calendars/ at ROOT is NOT ignored
+# This folder gets committed and deployed to Azure!
+# ===================
