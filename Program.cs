@@ -8,9 +8,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.Win32;
 using System.Security.Authentication.ExtendedProtection;
+using UmCalendar.Services;
+using UmCalendar.Controllers;
 
 DotNetEnv.Env.Load();
-
 var builder = WebApplication.CreateBuilder();
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -18,13 +19,28 @@ var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
 var apiKey = builder.Configuration["Jwt:ApiKey"];
 
+var rootPath = Directory.GetCurrentDirectory();
+var calendarPath = Path.Combine(rootPath, "calendars");
+builder.Services.AddSingleton(calendarPath);
+
+// Add services
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApiDocument(config =>
 {
     config.DocumentName = "calendar-api";
     config.Title = "Calendar Api";
     config.Version = "v1";
+    config.AddSecurity("JWT", Enumerable.Empty<string>(), new NSwag.OpenApiSecurityScheme
+    {
+        Type = NSwag.OpenApiSecuritySchemeType.ApiKey,
+        Name = "Authorization",
+        In = NSwag.OpenApiSecurityApiKeyLocation.Header,
+        Description = "Type: Bearer {your JWT token}."
+    });
 });
+
+// Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(jwtOptions =>
 {
@@ -41,25 +57,54 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         )
     };
 });
-
+// Authorisation
 builder.Services.AddAuthorization();
-builder.Services.AddCors(FileOptions =>
-{
-    FileOptions.AddDefaultPolicy(policy =>
+
+// Services
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// Cors
+builder.Services.AddCors(options => options.AddPolicy(name: "UmPolicy",
+    policy =>
     {
-        policy
-        .AllowAnyOrigin()
+        policy.SetIsOriginAllowed(origin =>
+        {
+            if (string.IsNullOrEmpty(origin)) return true;
+            try
+            {
+                var uri = new Uri(origin);
+                var host = uri.Host.ToLowerInvariant();
+                // production front end
+                if (uri.Scheme == "https" && host == "um-calendar-frontend.pages.dev") return true;
+    
+                // subdomains
+                if (uri.Scheme == "https" && host.EndsWith(".um-calendar-frontend.pages.dev")) return true;
+                if (host.StartsWith("um-calendar")) return true;
+
+                // localhost
+                if (builder.Environment.IsDevelopment() && host == "localhost") return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EXCEPTION_CORS:\nOrigin:{origin}\nException:{ex.Message}");
+                return false;
+            }
+            return false;
+        })
         .AllowAnyMethod()
-        .AllowAnyHeader();
-    });
-});
+        .AllowAnyHeader()
+        .AllowCredentials();
+    }));
 
 var app = builder.Build();
+// Middleware
+app.UseCors("UmPolicy");
+
 app.UseOpenApi();
 app.UseSwaggerUi();
 
+// Auth
 app.UseAuthentication();
-app.UseCors();
 app.UseAuthorization();
 
 app.Use(async (context, next) =>
@@ -73,65 +118,7 @@ app.Use(async (context, next) =>
 });
 
 
-var rootPath = Directory.GetCurrentDirectory();
-var calendarPath = Path.Combine(rootPath, "calendars");
-Directory.CreateDirectory(calendarPath);
-string[] icsFiles = Directory.GetFiles(calendarPath, "*.ics");
-
-app.MapGet("/health", () =>
-{
-    return new { status = "healthy" };
-})
-.WithTags("System");
-
-app.MapGet("/names", () =>
-{
-    var names = icsFiles
-    .Select(f => Path.GetFileNameWithoutExtension(f))
-    .OrderBy(n => n)
-    .ToArray();
-
-    return names;
-})
-.WithTags("Calendars")
-.RequireAuthorization();
-app.MapGet("/cal/{name}", (string name) =>
-{
-    var filePath = Path.Combine(calendarPath, name + ".ics");
-    if (!File.Exists(filePath))
-    {
-        return Results.NotFound();
-    }
-    var fileContent = File.ReadAllText(filePath);
-    return Results.Content(fileContent, "text/calendar; charset=utf-8");
-})
-.WithTags("Calendars")
-.RequireAuthorization();
-
-app.MapGet("/generate-token/", () => 
-{
-    var claims = new[]
-    {
-        new Claim(ClaimTypes.Name, "public"),
-        new Claim(ClaimTypes.Role, "viewer")
-    };
-    
-    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-    var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-    
-    var token = new JwtSecurityToken(
-        issuer: jwtIssuer,
-        audience: jwtAudience,
-        claims: claims,
-        expires: DateTime.Now.AddHours(24),
-        signingCredentials: credentials
-    );
-    
-    var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-    return Results.Ok(new { token = tokenString });
-})
-.WithTags("Authorisation");
-
+app.MapControllers();
 app.Run();
 
 record LoginRequest(string ApiKey);
