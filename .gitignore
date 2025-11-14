@@ -44,6 +44,7 @@ Thumbs.db
 .env.local
 .env.*
 !.env.example
+appsettings.json
 
 # ===================
 # Important: calendars/ at ROOT is NOT ignored
