@@ -21,7 +21,7 @@ namespace UmCalendar.Controllers
         {
             var success = await _userService.RegisterAsync(dto);
             if (!success) return BadRequest("User already exists or error occured.");
-            return Ok("Registration successful.");
+            return Ok(new {message = "Registration successful."});
         }
 
         [HttpPost("login")]
