@@ -15,13 +15,15 @@ namespace UmCalendar.Services
             _db = db;
         }
 
-        public async Task<bool> RegisterAsync(RegisterDto dto)
+        public async Task<(bool Success, string Error)> RegisterAsync(RegisterDto dto)
         {
-            var existing = await _db.Users
-                .FirstOrDefaultAsync(u => u.Email == dto.Email || u.Name == dto.Name);
+            var existingEmail = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (existingEmail != null)
+                return (false, "Email already taken.");
 
-            if (existing != null)
-                return false;
+            var existingName = await _db.Users.FirstOrDefaultAsync(u => u.Name == dto.Name);
+            if (existingName != null)
+                return (false, "Name already taken.");
 
             string salt = PasswordHelper.GenerateSalt();
             string hash = PasswordHelper.HashPassword(dto.Password, salt);
@@ -38,7 +40,7 @@ namespace UmCalendar.Services
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            return true;
+            return (true, null);
         }
 
         public async Task<User> AuthenticateAsync(LoginDto dto)

@@ -4,7 +4,7 @@ namespace UmCalendar.Services
 {
     public interface IUserService
     {
-        Task<bool> RegisterAsync(RegisterDto dto);
+        Task<(bool Success, string Error)> RegisterAsync(RegisterDto dto);
         Task<User> AuthenticateAsync(LoginDto dto);
     }
 }
