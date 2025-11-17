@@ -12,6 +12,8 @@ using UmCalendar.Services;
 using UmCalendar.Controllers;
 using UmCalendar.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Identity;
 
 DotNetEnv.Env.Load();
 var builder = WebApplication.CreateBuilder();
@@ -47,7 +49,14 @@ builder.Services.AddOpenApiDocument(config =>
 });
 
 // Authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options => {
+
+  // options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+  options.DefaultScheme = "Cookies";
+  options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+
+})
+.AddCookie("Cookies")
 .AddJwtBearer(jwtOptions =>
 {
   jwtOptions.TokenValidationParameters = new TokenValidationParameters
@@ -62,9 +71,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
           Encoding.UTF8.GetBytes(jwtKey)
       )
   };
+})
+.AddGoogle(googleOptions => 
+{
+  googleOptions.ClientId = builder.Configuration["ClientId"] ?? "";
+  googleOptions.ClientSecret = builder.Configuration["ClientSecret"] ?? "";
+  googleOptions.CallbackPath = "/signin-google";
 });
+
+/* builder.Services.AddIdentity<User, IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders(); */
+
 // Authorisation
 builder.Services.AddAuthorization();
+
 
 // Services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
