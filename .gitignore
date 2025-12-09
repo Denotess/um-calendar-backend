@@ -49,3 +49,5 @@ Thumbs.db
 # Important: calendars/ at ROOT is NOT ignored
 # This folder gets committed and deployed to Azure!
 # ===================
+
+.fake
